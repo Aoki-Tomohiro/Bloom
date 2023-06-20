@@ -25,6 +25,10 @@ public:
 	void CreateViewport();
 	void CreateScissorRect();
 	void Draw(ID3D12Resource* vertexResource, D3D12_VERTEX_BUFFER_VIEW vertexBufferView, VertexData* vertexData, uint32_t vertexCount, ID3D12Resource* WVPResource);
+	
+	//一パス目
+	void CreateFirstPassPSO();
+	void FirstPassDraw(D3D12_VERTEX_BUFFER_VIEW vertexBufferView);
 private:
 	//DirectX
 	DirectXCommon* directX_ = nullptr;
@@ -45,4 +49,12 @@ private:
 	D3D12_VIEWPORT viewport_{};
 	//シザー矩形
 	D3D12_RECT scissorRect_{};
+
+	//１パス目用PSOの作成
+	ID3DBlob* firstPassSignatureBlob_ = nullptr;
+	ID3DBlob* firstPassErrorBlob_ = nullptr;
+	ID3D12RootSignature* firstPassRootSignature_ = nullptr;
+	IDxcBlob* firstPassVertexShaderBlob_ = nullptr;
+	IDxcBlob* firstPassPixelShaderBlob_ = nullptr;
+	ID3D12PipelineState* firstPassGraphicsPipelineState_ = nullptr;
 };

@@ -2,6 +2,8 @@
 
 DirectXCommon::~DirectXCommon() {
 	CloseHandle(fenceEvent_);
+	firstPassResource_->Release();
+	multiPassRTVDescriptorHeap_->Release();
 	fence_->Release();
 	srvDescriptorHeap_->Release();
 	rtvDescriptorHeap_->Release();
@@ -35,6 +37,9 @@ void DirectXCommon::Initialize(WinApp* winApp) {
 	DirectXCommon::CreateRenderTargetView();
 	DirectXCommon::CreateShaderResourceView();
 	DirectXCommon::CreateFence();
+	DirectXCommon::CreateFirstPassResource();
+	DirectXCommon::CreateFirstPassRTV();
+	DirectXCommon::CreateFirstPassSRV();
 }
 
 void DirectXCommon::CreateDXGIDevice() {
@@ -231,8 +236,6 @@ void DirectXCommon::PreDraw() {
 	//指定した色で画面全体をクリアする
 	float clearColor[] = { 0.1f,0.25f,0.5f,1.0f };//青っぽい色。RGBAの順
 	commandList_->ClearRenderTargetView(rtvHandles[backBufferIndex], clearColor, 0, nullptr);
-	ID3D12DescriptorHeap* descriptorHeaps[] = { srvDescriptorHeap_ };
-	commandList_->SetDescriptorHeaps(1, descriptorHeaps);
 }
 
 void DirectXCommon::PostDraw() {
@@ -278,4 +281,87 @@ void DirectXCommon::PostDraw() {
 	assert(SUCCEEDED(hr));
 	hr = commandList_->Reset(commandAllocator_, nullptr);
 	assert(SUCCEEDED(hr));
+}
+
+void DirectXCommon::CreateFirstPassResource() {
+	//ヒープの設定
+	D3D12_HEAP_PROPERTIES heapProperties{};
+	heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
+	//リソースの設定
+	D3D12_RESOURCE_DESC resourceDesc{};
+	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	resourceDesc.Width = winApp_->kClientWidth;
+	resourceDesc.Height = winApp_->kClientHeight;
+	resourceDesc.DepthOrArraySize = 1;
+	resourceDesc.MipLevels = 1;
+	resourceDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	resourceDesc.SampleDesc.Count = 1;
+	resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+	resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	//ClearValue
+	D3D12_CLEAR_VALUE clearValue;
+	clearValue.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	clearValue.Color[0] = 0.1f;
+	clearValue.Color[1] = 0.25f;
+	clearValue.Color[2] = 0.5f;
+	clearValue.Color[3] = 1.0f;
+	//リソースの作成
+	HRESULT hr = device_->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE,
+		&resourceDesc, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &clearValue,
+		IID_PPV_ARGS(&firstPassResource_));
+	assert(SUCCEEDED(hr));
+}
+
+void DirectXCommon::CreateFirstPassRTV() {
+	//ディスクリプタヒープの作成
+	multiPassRTVDescriptorHeap_ = CreateDescriptorHeap(device_, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 1, false);
+	//RTVの設定
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
+	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+	rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	//ディスクリプタハンドルを取得する
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = multiPassRTVDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+	device_->CreateRenderTargetView(firstPassResource_, &rtvDesc, rtvHandle);
+}
+
+void DirectXCommon::CreateFirstPassSRV() {
+	//SRVの設定
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	srvDesc.Texture2D.MipLevels = 1;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	//ディスクリプタハンドルを取得する
+	D3D12_CPU_DESCRIPTOR_HANDLE srvCPUHandle_ = srvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+	srvCPUHandle_.ptr += device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	//SRVの作成
+	device_->CreateShaderResourceView(firstPassResource_, &srvDesc, srvCPUHandle_);
+}
+
+void DirectXCommon::FirstPassPreDraw() {
+	//描画先のRTVのハンドル取得する
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
+	rtvHandle = multiPassRTVDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();//RTV1
+	//barirerを張る
+	D3D12_RESOURCE_BARRIER barrier{};
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	barrier.Transition.pResource = firstPassResource_;
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	commandList_->ResourceBarrier(1, &barrier);
+	commandList_->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
+	float clearColor[] = { 0.1f,0.25f,0.5f,1.0f };
+	commandList_->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+}
+
+
+void DirectXCommon::FirstPassPostDraw() {
+	D3D12_RESOURCE_BARRIER barrier{};
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	barrier.Transition.pResource = firstPassResource_;
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	commandList_->ResourceBarrier(1, &barrier);
 }

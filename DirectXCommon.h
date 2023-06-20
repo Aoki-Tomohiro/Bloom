@@ -27,6 +27,15 @@ public:
 	ID3D12DescriptorHeap* GetSRVDescriptorHeap() { return srvDescriptorHeap_; };
 	ID3D12GraphicsCommandList* GetCommandList() { return commandList_; };
 	WinApp* GetWinApp() { return winApp_; };
+
+	//一パス目
+	void CreateFirstPassResource();
+	void CreateFirstPassRTV();
+	void CreateFirstPassSRV();
+	void FirstPassPreDraw();
+	void FirstPassPostDraw();
+
+
 private:
 	//WinApp
 	WinApp* winApp_ = nullptr;
@@ -57,4 +66,7 @@ private:
 	ID3D12Fence* fence_ = nullptr;
 	uint64_t fenceValue_ = 0;
 	HANDLE fenceEvent_ = nullptr;
+
+	ID3D12DescriptorHeap* multiPassRTVDescriptorHeap_ = nullptr;
+	ID3D12Resource* firstPassResource_ = nullptr;
 };

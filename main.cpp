@@ -6,6 +6,7 @@
 #include "externals/imgui/imgui_impl_win32.h"
 #include "externals/imgui/imgui_impl_DX12.h"
 
+
 //Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_  HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd) {
 
@@ -24,10 +25,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_  HINSTANCE hPrevInstance, 
 	model->Initialize(directX);
 
 	//頂点データ
-	ID3D12Resource* resource;
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
+	ID3D12Resource* resource[2];
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferView[2]{};
 	//球
-	resource = model->CreateBufferResource(directX->GetDevice(), sizeof(VertexData) * 1536);
+	resource[0] = model->CreateBufferResource(directX->GetDevice(), sizeof(VertexData) * 1536);
 	VertexData sphereVertexData[1536];
 	const float pi = 3.14f;
 	const uint32_t kSubdivision = 16;
@@ -84,6 +85,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_  HINSTANCE hPrevInstance, 
 			sphereVertexData[start + 5].texcoord.y = 1.0f - float(latIndex + kLatEvery) / float(kSubdivision);
 		}
 	}
+	//画像貼り付け用
+	VertexData vertexData[4];
+	vertexData[0] = { {-1.0f,-1.0f,0.0,1.0f},{0.0f,1.0f} };
+	vertexData[1] = { {-1.0f,1.0f,0.0f,1.0f},{0.0f,0.0f} };
+	vertexData[2] = { {1.0f,-1.0f,0.0f,1.0f},{1.0f,1.0f} };
+	vertexData[3] = { {1.0f,1.0f,0.0f,1.0f},{1.0f,0.0f} };
+	resource[1] = model->CreateBufferResource(directX->GetDevice(), sizeof(VertexData) * 4);
+	model->CreateVertexData(resource[1], vertexBufferView[1], sizeof(VertexData) * 4, vertexData, 4);
 
 
 	//WVPリソース
@@ -128,8 +137,12 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_  HINSTANCE hPrevInstance, 
 
 		//描画処理
 		ImGui::Render();
+		directX->FirstPassPreDraw();
+		model->Draw(resource[0], vertexBufferView[0], sphereVertexData, 1536, transformationMatrixData);
+		directX->FirstPassPostDraw();
+
 		directX->PreDraw();
-		model->Draw(resource, vertexBufferView, sphereVertexData, 1536, transformationMatrixData);
+		model->FirstPassDraw(vertexBufferView[1]);
 		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), directX->GetCommandList());
 		directX->PostDraw();
 	}
@@ -139,7 +152,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_  HINSTANCE hPrevInstance, 
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
 	transformationMatrixData->Release();
-	resource->Release();
+	for (int i = 0; i < 2; i++) {
+		resource[i]->Release();
+	}
 	delete model;
 	delete directX;
 	delete winApp;
