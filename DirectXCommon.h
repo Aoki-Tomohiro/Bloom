@@ -28,13 +28,17 @@ public:
 	ID3D12GraphicsCommandList* GetCommandList() { return commandList_; };
 	WinApp* GetWinApp() { return winApp_; };
 
-	//一パス目
-	void CreateFirstPassResource();
-	void CreateFirstPassRTV();
-	void CreateFirstPassSRV();
+	void CreateMultiPassResource();
+	void CreateMultiPassRTV();
+	void CreateMultiPassSRV();
 	void FirstPassPreDraw();
 	void FirstPassPostDraw();
-
+	void SecondPassPreDraw();
+	void SecondPassPostDraw();
+	void PreHorizontalBlur();
+	void PostHorizontalBlur();
+	void PreVerticalBlur();
+	void PostVerticalBlur();
 
 private:
 	//WinApp
@@ -67,6 +71,13 @@ private:
 	uint64_t fenceValue_ = 0;
 	HANDLE fenceEvent_ = nullptr;
 
+	//一パス目用
 	ID3D12DescriptorHeap* multiPassRTVDescriptorHeap_ = nullptr;
 	ID3D12Resource* firstPassResource_ = nullptr;
+
+	//二パス目用
+	ID3D12Resource* secondPassResources_[2];
+
+	//縮小バッファ
+	ID3D12Resource* shrinkBuffer_[2];
 };

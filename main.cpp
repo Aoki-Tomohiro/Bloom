@@ -6,6 +6,23 @@
 #include "externals/imgui/imgui_impl_win32.h"
 #include "externals/imgui/imgui_impl_DX12.h"
 
+struct Weights {
+	float weight[8];
+};
+
+Weights GaussianWeights(size_t count, float s) {
+	Weights weight;
+	float total = 0.0f;
+	for (int i = 0; i < 8; i++) {
+		weight.weight[i] = expf(-(i * i) / (2 * s * s));
+		total += weight.weight[i];
+	}
+	total = total * 2.0f - 1.0f;
+	for (int i = 0; i < 8; i++) {
+		weight.weight[i] /= total;
+	}
+	return weight;
+}
 
 //Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_  HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd) {
@@ -94,13 +111,18 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_  HINSTANCE hPrevInstance, 
 	resource[1] = model->CreateBufferResource(directX->GetDevice(), sizeof(VertexData) * 4);
 	model->CreateVertexData(resource[1], vertexBufferView[1], sizeof(VertexData) * 4, vertexData, 4);
 
+	//ぼかし
+	ID3D12Resource* blurResource;
+	blurResource = model->CreateBufferResource(directX->GetDevice(), sizeof(Weights));
+	Weights* mappedWeight = nullptr;
+	blurResource->Map(0, nullptr, reinterpret_cast<void**>(&mappedWeight));
+	*mappedWeight = GaussianWeights(8, 5.0f);
 
 	//WVPリソース
 	ID3D12Resource* transformationMatrixData = nullptr;
 	Transform transform = { {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
 	Transform cameraTransform = { { 1.0f,1.0f,1.0f }, { 0.0f,0.0f,0.0f }, { 0.0f,0.0f,-10.0f } };
 	transformationMatrixData = model->CreateBufferResource(directX->GetDevice(), sizeof(Matrix4x4));
-
 
 	//ImGuiの初期化
 	IMGUI_CHECKVERSION();
@@ -137,12 +159,28 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_  HINSTANCE hPrevInstance, 
 
 		//描画処理
 		ImGui::Render();
+		//一パス目のRenderTargetに球を描画する
 		directX->FirstPassPreDraw();
 		model->Draw(resource[0], vertexBufferView[0], sphereVertexData, 1536, transformationMatrixData);
 		directX->FirstPassPostDraw();
 
-		directX->PreDraw();
+		//通常テクスチャと高輝度テクスチャを取得する
+		directX->SecondPassPreDraw();
 		model->FirstPassDraw(vertexBufferView[1]);
+		directX->SecondPassPostDraw();
+
+		//高輝度を横にぼかす
+		directX->PreHorizontalBlur();
+		model->HorizontalBlur(vertexBufferView[1], blurResource);
+		directX->PostHorizontalBlur();
+		//横にぼかしたテクスチャを縦にぼかす
+		directX->PreVerticalBlur();
+		model->VerticalBlur(vertexBufferView[1], blurResource);
+		directX->PostVerticalBlur();
+
+		//通常テクスチャと高輝度テクスチャとぼかしテクスチャを加算する
+		directX->PreDraw();
+		model->SecondPassDraw(vertexBufferView[1]);
 		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), directX->GetCommandList());
 		directX->PostDraw();
 	}
@@ -152,6 +190,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_  HINSTANCE hPrevInstance, 
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
 	transformationMatrixData->Release();
+	blurResource->Release();
 	for (int i = 0; i < 2; i++) {
 		resource[i]->Release();
 	}

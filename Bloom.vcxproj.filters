@@ -132,12 +132,21 @@
     <FxCompile Include="shader\FirstPassVS.hlsl">
       <Filter>shader</Filter>
     </FxCompile>
+    <FxCompile Include="shader\SecondPassVS.hlsl">
+      <Filter>shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\SecondPassPS.hlsl">
+      <Filter>shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\HorizontalBlurPS.hlsl">
+      <Filter>shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\VerticalBlurPS.hlsl">
+      <Filter>shader</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="shader\Object3d.hlsli">
-      <Filter>shader</Filter>
-    </None>
-    <None Include="shader\FirstPass.hlsli">
       <Filter>shader</Filter>
     </None>
   </ItemGroup>

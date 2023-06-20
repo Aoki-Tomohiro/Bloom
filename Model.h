@@ -29,6 +29,16 @@ public:
 	//一パス目
 	void CreateFirstPassPSO();
 	void FirstPassDraw(D3D12_VERTEX_BUFFER_VIEW vertexBufferView);
+
+	//二パス目
+	void CreateSecondPassPSO();
+	void SecondPassDraw(D3D12_VERTEX_BUFFER_VIEW vertexBufferView);
+
+	//blur
+	void CreateBlurPSO();
+	void HorizontalBlur(D3D12_VERTEX_BUFFER_VIEW vertexBufferView, ID3D12Resource* bkResource);
+	void VerticalBlur(D3D12_VERTEX_BUFFER_VIEW vertexBufferView, ID3D12Resource* bkResource);
+
 private:
 	//DirectX
 	DirectXCommon* directX_ = nullptr;
@@ -57,4 +67,28 @@ private:
 	IDxcBlob* firstPassVertexShaderBlob_ = nullptr;
 	IDxcBlob* firstPassPixelShaderBlob_ = nullptr;
 	ID3D12PipelineState* firstPassGraphicsPipelineState_ = nullptr;
+
+	//２パス目用PSOの作成
+	ID3DBlob* secondPassSignatureBlob_ = nullptr;
+	ID3DBlob* secondPassErrorBlob_ = nullptr;
+	ID3D12RootSignature* secondPassRootSignature_ = nullptr;
+	IDxcBlob* secondPassVertexShaderBlob_ = nullptr;
+	IDxcBlob* secondPassPixelShaderBlob_ = nullptr;
+	ID3D12PipelineState* secondPassGraphicsPipelineState_ = nullptr;
+
+	//ぼかし用パイプライン
+	ID3DBlob* horizontalBlurSignatureBlob_ = nullptr;
+	ID3DBlob* horizontalBlurErrorBlob_ = nullptr;
+	ID3D12RootSignature* horizontalBlurRootSignature_ = nullptr;
+	IDxcBlob* horizontalBlurVertexShaderBlob_ = nullptr;
+	IDxcBlob* horizontalBlurPixelShaderBlob_ = nullptr;
+	ID3D12PipelineState* horizontalBlurGraphicsPipelineState_ = nullptr;
+
+	//ぼかし用パイプライン
+	ID3DBlob* verticalBlurSignatureBlob_ = nullptr;
+	ID3DBlob* verticalBlurErrorBlob_ = nullptr;
+	ID3D12RootSignature* verticalBlurRootSignature_ = nullptr;
+	IDxcBlob* verticalBlurVertexShaderBlob_ = nullptr;
+	IDxcBlob* verticalBlurPixelShaderBlob_ = nullptr;
+	ID3D12PipelineState* verticalBlurGraphicsPipelineState_ = nullptr;
 };
