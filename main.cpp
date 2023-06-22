@@ -10,18 +10,19 @@ struct Weights {
 	float weight[8];
 };
 
-Weights GaussianWeights(size_t count, float s) {
-	Weights weight;
+Weights GaussianWeights(float s) {
+	Weights weights;
 	float total = 0.0f;
 	for (int i = 0; i < 8; i++) {
-		weight.weight[i] = expf(-(i * i) / (2 * s * s));
-		total += weight.weight[i];
+		weights.weight[i] = expf(-(i * i) / (2 * s * s));
+		total += weights.weight[i];
 	}
 	total = total * 2.0f - 1.0f;
+	//最終的な合計値で重みをわる
 	for (int i = 0; i < 8; i++) {
-		weight.weight[i] /= total;
+		weights.weight[i] /= total;
 	}
-	return weight;
+	return weights;
 }
 
 //Windowsアプリでのエントリーポイント(main関数)
@@ -115,8 +116,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_  HINSTANCE hPrevInstance, 
 	ID3D12Resource* blurResource;
 	blurResource = model->CreateBufferResource(directX->GetDevice(), sizeof(Weights));
 	Weights* mappedWeight = nullptr;
+	float s = 5.0f;
 	blurResource->Map(0, nullptr, reinterpret_cast<void**>(&mappedWeight));
-	*mappedWeight = GaussianWeights(8, 5.0f);
+	*mappedWeight = GaussianWeights(s);
 
 	//WVPリソース
 	ID3D12Resource* transformationMatrixData = nullptr;
@@ -153,7 +155,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_  HINSTANCE hPrevInstance, 
 		Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(winApp->kClientWidth) / float(winApp->kClientHeight), 0.1f, 100.0f);
 		Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 		model->UpdateMatrix(transformationMatrixData, worldViewProjectionMatrix);
+		*mappedWeight = GaussianWeights(s);
 		ImGui::Begin("Window");
+		ImGui::SliderFloat("s", &s, 0.0f, 10.0f);
 		ImGui::End();
 
 

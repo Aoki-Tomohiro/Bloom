@@ -11,8 +11,7 @@ struct PixelShaderOutput {
 PixelShaderOutput main(VertexShaderOutput input) {
 	PixelShaderOutput output;
 	output.color = gTexture.Sample(gSampler, input.texcoord);
-	output.highLum = gTexture.Sample(gSampler, input.texcoord);
-	float y = output.highLum.r * 0.299 + output.highLum.g * 0.587 + output.highLum.b * 0.114;
+	float y = output.color.r * 0.299 + output.color.g * 0.587 + output.color.b * 0.114;
 	if (y > 0.99f) {
 		output.highLum = y;
 	}
