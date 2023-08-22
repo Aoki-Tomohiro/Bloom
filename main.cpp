@@ -32,7 +32,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_  HINSTANCE hPrevInstance, 
 
 	//WindowsAPI
 	WinApp* winApp = new WinApp;
-	winApp->CreateGameWindow(L"CG2WindowClass", winApp->kClientWidth, winApp->kClientHeight);
+	winApp->CreateGameWindow(L"TR1_Bloom", winApp->kClientWidth, winApp->kClientHeight);
 
 	//DirectX
 	DirectXCommon* directX = new DirectXCommon;

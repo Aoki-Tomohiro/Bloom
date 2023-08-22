@@ -70,7 +70,7 @@ void WinApp::CreateGameWindow(const wchar_t* title, int32_t kClientWidth, int32_
 	//ウィンドウプロシージャ
 	wc_.lpfnWndProc = WindowProc;
 	//ウィンドウクラス名(なんでも良い)
-	wc_.lpszClassName = title;
+	wc_.lpszClassName = L"CG2WindowClass";
 	//インスタンスハンドル
 	wc_.hInstance = GetModuleHandle(nullptr);
 	//カーソル
@@ -90,7 +90,7 @@ void WinApp::CreateGameWindow(const wchar_t* title, int32_t kClientWidth, int32_
 	//ウィンドウの生成
 	hwnd_ = CreateWindow(
 		wc_.lpszClassName, //利用するクラス名
-		L"TR1", //タイトルバーの文字(何でも良い)
+		title, //タイトルバーの文字(何でも良い)
 		WS_OVERLAPPEDWINDOW, //よく見るウィンドウスタイル
 		CW_USEDEFAULT, //表示X座標(Windowsに任せる)
 		CW_USEDEFAULT, //表示Y座標(Windowsに任せる)
